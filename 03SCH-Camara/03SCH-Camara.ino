@@ -16,7 +16,9 @@
 #include <PubSubClient.h>
 #include <HTTPClient.h>
 #include <DHT.h>
-#include <LiquidCrystal_I2C.h>
+//#include <LiquidCrystal_I2C.h>
+#include <Adafruit_LEDBackpack.h>
+
 
 #define SD_CS		5						// Define CS pin para modulo SD
 #define PUERTA1		25
@@ -24,16 +26,16 @@
 #define RX			17
 #define TX			16
 #define BUZZER		12
+#define ESTROBO		32
 #define DHTPIN1		14
 #define DHTPIN2		27
 #define DHTPIN3		26
 #define DHTTYPE		DHT22
-#define lcdCOLUMNS  16
-#define lcdROWS		2
+//#define lcdCOLUMNS  16
+//#define lcdROWS		2
 
-int lcdColumns = 16;
-int lcdRows = 2;
-
+//int lcdColumns = 16;
+//int lcdRows = 2;
 
 File schFile;
 boolean okSD = 0, okNET = 0;
@@ -49,7 +51,8 @@ SoftwareSerial swserial_O(RX, TX);
 DHT dht1(DHTPIN1, DHTTYPE);
 DHT dht2(DHTPIN2, DHTTYPE);
 DHT dht3(DHTPIN3, DHTTYPE);
-LiquidCrystal_I2C lcd(0x27, lcdColumns, lcdRows);
+Adafruit_7segment lcd = Adafruit_7segment();
+//LiquidCrystal_I2C lcd(0x27, lcdColumns, lcdRows);
 
 byte tipo = 1;
 bool debug = 0;
@@ -62,7 +65,7 @@ int h_avg, h1, h2, h3, h_max = 100, h_min = 85;                //Humedad
 float t_avg, t1, t2, t3, t_max = 2, t_min = -2;                //Temperatura
 unsigned long millis_previos_p1 = 0, millis_previos_p2 = 0, millis_previos_p3 = 0, millis_previos_p4 = 0;
 unsigned long millis_previos_precios = 0, millis_previos_activo = 0;
-int inervalo_precios = 3600000, inervalo_activo = 60000;      // Intervalos de tiempo para Millis
+int inervalo_precios = 3600000, inervalo_activo = 300000;      // Intervalos de tiempo para Millis
 
 String schAPI;
 String carniceria;
@@ -77,12 +80,13 @@ void setup() {
 	pinMode(ledRojo, OUTPUT);
 	pinMode(ledVerde, OUTPUT);
 	pinMode(ledAzul, OUTPUT);
+	pinMode(ESTROBO, OUTPUT);
 	pinMode(BUZZER, OUTPUT);
 	pinMode(PUERTA1, INPUT);
 	pinMode(PUERTA2, INPUT);
-	lcd.begin(16, 2);
-	lcd.init();
-	lcd.backlight();
+	lcd.begin(0x70);
+	lcd.setBrightness(8);
+	lcd.clear();
 	ledFalla();
 	ledComunicacion();
 	dht1.begin();
@@ -92,11 +96,6 @@ void setup() {
 	Serial.begin(115200);
 	debug = debugActivar();
 	debug ? Serial.println("Debug activado!") : false;
-	lcd.clear();
-	lcd.setCursor(0, 0);
-	lcd.print("   SUCAHERSA");
-	lcd.setCursor(0, 1);
-	lcd.print("  CIATEC, A.C.");
 	intro();
 	iniciarMCU() == true ? Serial.println("MCU Listo!") : Serial.println("MCU Falla!");
 	ledOK();
@@ -617,31 +616,22 @@ bool leerTemperatura() {
 	estatus = 1;
 	estatus ? ledOK() : ledFalla();
 
-	lcd.clear();
-	lcd.setCursor(0, 0);
-	lcd.print("Temp: ");
-	lcd.print(t_avg);
-	lcd.print(" C");
-	lcd.setCursor(0, 1);
-	lcd.print("Hume:    ");
-	lcd.print(h_avg);
-	lcd.print(" %");
+	displayLCD(t_avg);
 	if (t_avg >= t_max || t_avg <= t_min) {
+		digitalWrite(ESTROBO, HIGH);
 		ledFalla();
 		beep(1);
 		ledFalla();
 		beep(1);
-		lcd.setCursor(15, 0);
-		lcd.print("!");
 		debug ? Serial.println("Fuera de rangos aceptables de temperatura!!!") : false;
 		ledFalla();
 		beep(1);
+		delay(2000);
+		digitalWrite(ESTROBO, LOW);
 	}
 	if (h_avg >= h_max || h_avg <= h_min) {
 		ledFalla();
 		beep(1);
-		lcd.setCursor(15, 1);
-		lcd.print("!");
 		debug ? Serial.println("Fuera de rangos aceptables de humedad!!!") : false;
 		ledFalla();
 		beep(1);
@@ -856,4 +846,19 @@ void intro() {
 	debug ? Serial.println("mrodriguez@ciatec.mx") : false;
 	Serial.println("\n\n\n");
 	delay(2000);
+}
+
+
+void displayLCD(float valor) {
+	if (valor > -10.0 && valor < 99.0) {
+		lcd.printFloat(valor, 2, DEC);
+		lcd.writeDisplay();
+		debug ? Serial.println("Imprimiendo en display:" + String(valor)) : false;
+	}
+	else {
+		int temp = valor;
+		lcd.print(temp);
+		lcd.writeDisplay();
+		debug ? Serial.println("Imprimiendo en display:" + String(temp)) : false;
+	}
 }
