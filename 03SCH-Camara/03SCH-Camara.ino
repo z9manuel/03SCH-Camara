@@ -219,7 +219,7 @@ boolean iniciarMCU() {
 		tipo = dev_tipo;
 		iddispositivo = device;
 		servidorMQTT = mosquitto;
-		servidorMQTTGlobal = mosquitto;
+		servidorMQTTGlobal = mosquittoGlobal;
 		TopAvgTemp = tempAVG, topTemp1 = temp1;  topTemp2 = temp2; topTemp3 = temp3;
 		TopAvgHum = humeAVG, topHum1 = hume1; topHum2 = hume2; topHum3 = hume3;
 		topPue1 = puerta1; topPue2 = puerta2;
